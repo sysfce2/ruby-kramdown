@@ -86,6 +86,7 @@ class TestFiles < Minitest::Test
       'test/testcases/span/05_html/mark_element.html', # bc of tidy
       'test/testcases/block/09_html/xml.html', # bc of tidy
       'test/testcases/span/05_html/xml.html', # bc of tidy
+      'test/testcases/block/04_header/with_header_links.html', # because of header_links option
     ].compact
     EXCLUDE_HTML_TEXT_FILES = [
       'test/testcases/block/09_html/parse_as_span.htmlinput',
@@ -138,6 +139,7 @@ class TestFiles < Minitest::Test
       'test/testcases/block/06_codeblock/with_lang_in_fenced_block_any_char.text',
       'test/testcases/block/03_paragraph/standalone_image.text', # bc of standalone image
       'test/testcases/cjk-line-break.text', # latex unicode support
+      'test/testcases/block/04_header/with_auto_ids.text', # bc of Unicode characters
     ].compact
     Dir[File.dirname(__FILE__) + '/testcases/**/*.text'].each do |text_file|
       next if EXCLUDE_LATEX_FILES.any? {|f| text_file =~ /#{f}$/ }
@@ -240,6 +242,7 @@ class TestFiles < Minitest::Test
       'test/testcases/span/04_footnote/backlink_inline.html', # bc of mathjax
       'test/testcases/block/09_html/standalone_image_in_div.html', # bc of standalone image
       'test/testcases/block/09_html/processing_instruction.html', # bc of PI
+      'test/testcases/block/04_header/with_header_links.html', # bc of header_links option
     ].compact
     Dir[File.dirname(__FILE__) + '/testcases/**/*.html'].each do |html_file|
       next if EXCLUDE_HTML_KD_FILES.any? {|f| html_file =~ /#{f}$/ }
@@ -266,6 +269,7 @@ class TestFiles < Minitest::Test
 
   EXCLUDE_MODIFY = [
     'test/testcases/block/06_codeblock/rouge/multiple.text', # bc of HTMLFormater in options
+    'test/testcases/block/04_header/with_header_links.text', # bc of header_links option
   ].compact
 
   # Generate test methods for asserting that converters don't modify the document tree.
@@ -278,7 +282,11 @@ class TestFiles < Minitest::Test
       define_method("test_whether_#{conv_class}_modifies_tree_with_file_#{text_file.tr('.', '_')}") do
         doc = Kramdown::Document.new(File.read(text_file), options)
         options_before = Marshal.load(Marshal.dump(doc.options))
+        abbrev_proc = doc.root.options[:abbrev_defs].default_proc
+        doc.root.options[:abbrev_defs].default_proc = doc.root.options[:abbrev_attr].default_proc = nil
         tree_before = Marshal.load(Marshal.dump(doc.root))
+        doc.root.options[:abbrev_defs].default_proc = doc.root.options[:abbrev_attr].default_proc =
+          abbrev_proc
         Kramdown::Converter.const_get(conv_class).convert(doc.root, doc.options)
         assert_equal(options_before, doc.options)
         assert_tree_not_changed(tree_before, doc.root)
